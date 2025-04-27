@@ -1,18 +1,18 @@
-// client/api/profile-pic.js
 export default async function handler(req, res) {
   const { url } = req.query;
   if (!url || typeof url !== 'string') {
     return res.status(400).send('Missing `url` query parameter');
   }
 
+  const UA =
+    'Mozilla/5.0 (X11; Linux x86_64) ' +
+    'AppleWebKit/537.36 (KHTML, like Gecko) ' +
+    'Chrome/114.0.0.0 Safari/537.36';
+
   try {
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)…'
-      }
-    });
-    if (!response.ok || !response.body) {
-      console.error('Upstream failed:', response.status);
+    const response = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!response.ok) {
+      console.error('Upstream fetch failed:', response.status);
       return res.status(502).send('Error fetching image');
     }
 
