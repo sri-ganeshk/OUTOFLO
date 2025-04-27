@@ -10,39 +10,49 @@ export default function handler(req, res) {
   // pick the right client
   const client = url.startsWith('https') ? https : http
   
-  // turn off all caching at the Vercel edge + browser
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
-
-  // Create request options with headers
-  const options = {
+  // Create a clean request without conditional headers
+  const requestOptions = {
     headers: {
       // LinkedIn (and many sites) require a UA
       'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ' +
                     '(KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
-      // Prevent conditional requests from our side
+      // Force fresh content
       'Cache-Control': 'no-cache',
-      'Pragma': 'no-cache'
+      'Pragma': 'no-cache',
     }
   }
-
-  // Remove any browser conditional headers
-  delete options.headers['if-modified-since'];
-  delete options.headers['if-none-match'];
-
-  // proxy the request
+  
+  // Do NOT forward these conditional headers from the browser request
+  // This is the key to preventing 304 responses
+  
+  // Set aggressive anti-caching headers on our response
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
+  res.setHeader('Pragma', 'no-cache')
+  res.setHeader('Expires', '0')
+  
+  // Add a timestamp parameter to bust any caches
+  const cacheBuster = new URL(url);
+  cacheBuster.searchParams.append('_cb', Date.now());
+  
+  // proxy the request to the cache-busted URL
   client
-    .get(url, options, upstream => {
+    .get(cacheBuster.toString(), requestOptions, upstream => {
+      // Always serve as 200 OK, even if upstream returns 304
+      if (upstream.statusCode === 304) {
+        return res.status(200).end('No image data available');
+      }
+      
       // forward content-type
       if (upstream.headers['content-type']) {
         res.setHeader('Content-Type', upstream.headers['content-type'])
       } else {
         res.setHeader('Content-Type', 'application/octet-stream')
       }
-
-      // Explicitly prevent caching
-      res.setHeader('Expires', '0')
-      res.setHeader('Pragma', 'no-cache')
-
+      
+      // Remove any ETag or Last-Modified headers to prevent future 304s
+      res.removeHeader('ETag');
+      res.removeHeader('Last-Modified');
+      
       // pipe the image bytes straight to the response
       upstream.pipe(res)
     })
