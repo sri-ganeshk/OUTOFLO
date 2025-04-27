@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     'Chrome/114.0.0.0 Safari/537.36';
 
   try {
-    const response = await fetch(url, { headers: { 'User-Agent': UA } });
+    const response = await fetch(url, { headers: { 'User-Agent': UA,cache: 'no-store' } });
     if (!response.ok) {
       console.error('Upstream fetch failed:', response.status);
       return res.status(502).send('Error fetching image');
