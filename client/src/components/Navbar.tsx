@@ -75,9 +75,6 @@ const Navbar = () => {
                                 <Link to="/campaigns" className="text-black hover:bg-primary-900 block px-3 py-2 rounded-md text-base font-medium">
                                     Campaigns
                                 </Link>
-                                <Link to="/message-generator" className="text-black hover:bg-primary-900 block px-3 py-2 rounded-md text-base font-medium">
-                                    Message Generator
-                                </Link>
                                 <button 
                                     onClick={logout}
                                     className="w-full text-left text-black hover:bg-primary-900 block px-3 py-2 rounded-md text-base font-medium"
