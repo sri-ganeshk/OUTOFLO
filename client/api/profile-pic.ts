@@ -1,6 +1,5 @@
-// api/profile-pic.ts
+// api/profile-pic.ts  (or pages/api/profile-pic.ts if Next.js)
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import axios from 'axios'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { url } = req.query
@@ -9,12 +8,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // fetch the LinkedIn image as a stream
-    const response = await axios.get(url, { responseType: 'stream' })
-    res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg')
-    response.data.pipe(res)
+    // fetch with a browser-like User-Agent
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/114.0.0.0 Safari/537.36'
+      }
+    })
+
+    if (!response.ok || !response.body) {
+      console.error('Upstream fetch failed:', response.status, await response.text().catch(()=>''))
+      return res.status(502).send('Error fetching image')
+    }
+
+    // mirror the content-type
+    const contentType = response.headers.get('content-type') || 'image/jpeg'
+    res.setHeader('Content-Type', contentType)
+
+    // stream the buffer out
+    const arrayBuffer = await response.arrayBuffer()
+    res.send(Buffer.from(arrayBuffer))
   } catch (err) {
-    console.error(err)
+    console.error('Profile-pic handler error:', err)
     res.status(502).send('Error fetching image')
   }
 }
