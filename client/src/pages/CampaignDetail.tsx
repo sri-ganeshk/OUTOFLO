@@ -339,7 +339,7 @@ const CampaignDetail = () => {
                             {leadDetail.profile.profilePicture ? (
                               <div className="flex-shrink-0">
                                 <img
-                                  src={`/api/profile-pic?url=${encodeURIComponent(leadDetail.profile.profilePicture!)}&cb=${Date.now()}`}
+                                  src={selectedLead.profile.profilePicture}
                                   alt={leadDetail.profile.profileName || "Profile"}
                                   className="h-12 w-12 rounded-full object-cover border border-gray-200"
                                 />
