@@ -1,26 +1,34 @@
 export default async function handler(req, res) {
   const { url } = req.query;
-  if (!url) {
+  if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'Missing url parameter' });
   }
 
-  res.setHeader('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
-  res.removeHeader('ETag');
+  // Never cache this proxy response
+  res.setHeader('Cache-Control', 'no-store');
 
   try {
-    const response = await fetch(url, {
-      // 2. Tell the origin server to bypass its cache, too
-      headers: { 'Cache-Control': 'no-cache' },
+    // Ask LinkedIn’s CDN to treat us like a real browser
+    const upstream = await fetch(url, {
+      headers: {
+        // forward the user’s UA so it looks legit
+        'User-Agent': req.headers['user-agent'] || 'Mozilla/5.0',
+        // LinkedIn will let through images if referer is linkedin.com
+        Referer: 'https://www.linkedin.com/',
+        // let them know we’ll accept any image type
+        Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
+      }
     });
-    if (!response.ok) {
-      return res.status(response.status).end();
+
+    if (!upstream.ok) {
+      return res.status(upstream.status).end();
     }
 
-    const buffer = await response.arrayBuffer();
-    res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
-    return res.send(Buffer.from(buffer));
-  } catch (err) {
-    console.error('Error fetching image:', err);
-    return res.status(500).json({ error: 'Failed to fetch image' });
+    // Stream the binary out
+    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/octet-stream');
+    upstream.body.pipe(res);
+  } catch (error) {
+    console.error('fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch image' });
   }
 }
