@@ -1,8 +1,8 @@
-// api/proxy-image.js
+
 import fetch from 'node-fetch';
 
 export default async function handler(req, res) {
-  const { imageUrl } = req.query;
+  const { url: imageUrl } = req.query;
 
   if (!imageUrl) {
     return res.status(400).json({ error: 'Missing imageUrl parameter' });
@@ -11,13 +11,16 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(imageUrl);
     if (!response.ok) {
-      return res.status(response.status).end(); // Return the error status code
+      return res.status(response.status).end();
     }
 
-    const imageBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(await response.arrayBuffer());
 
+    // Disable edge & browser caching entirely
+    res.setHeader('Cache-Control', 'no-store, max-age=0, must-revalidate');
     res.setHeader('Content-Type', response.headers.get('content-type'));
-    res.send(Buffer.from(imageBuffer));
+    return res.send(buffer);
+
   } catch (error) {
     console.error('Error fetching image:', error);
     return res.status(500).json({ error: 'Failed to fetch image' });
